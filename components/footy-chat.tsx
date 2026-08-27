@@ -6,6 +6,7 @@ import { DemoMode } from "@/components/demo-mode"
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group"
 import { currentInformationFallback, isLikelyCurrentQuestion, noGeminiMessage, offlineFootballFallback } from "@/lib/football-fallback"
 import { matchFootballQuestion } from "@/lib/football-matcher"
+import { isPlayerFollowUp, matchPlayerQuestion, playerAnswer } from "@/lib/player-matcher"
 
 type SpeechRecognitionResultEvent = Event & {
   results: {
@@ -95,6 +96,9 @@ export function FootyChat() {
     if (!text || isThinking) return
 
     const localMatch = matchFootballQuestion(text)
+    const playerMatch = matchPlayerQuestion(text) || (isPlayerFollowUp(text)
+      ? [...messages].reverse().map(message => matchPlayerQuestion(message.text)).find(Boolean) || null
+      : null)
     const isGreeting = /^(hello|hi|hey|good morning|good afternoon|good evening)\b/i.test(text)
     const apiKey = sessionStorage.getItem(storageKey)?.trim()
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", text }
@@ -104,8 +108,8 @@ export function FootyChat() {
     setChatError("")
     setIsThinking(true)
 
-    if (demo || isGreeting || (localMatch?.confidence === "high" && !isLikelyCurrentQuestion(text))) {
-      const answer = isGreeting ? greetingAnswer : `${localMatch?.entry.answer || offlineFootballFallback}${demo ? "\n\nTry asking me another football question." : ""}`
+    if (demo || isGreeting || (playerMatch && !isLikelyCurrentQuestion(text)) || (localMatch?.confidence === "high" && !isLikelyCurrentQuestion(text))) {
+      const answer = isGreeting ? greetingAnswer : `${playerMatch ? playerAnswer(playerMatch) : localMatch?.entry.answer || offlineFootballFallback}${demo ? "\n\nTry asking me another football question." : ""}`
       const source = demo ? "Demo Mode" : "Built-in knowledge"
       if (demo) await new Promise(resolve => window.setTimeout(resolve, 350))
       setMessages(current => [...current, { id: crypto.randomUUID(), role: "assistant", text: answer, source }])
@@ -114,7 +118,7 @@ export function FootyChat() {
     }
 
     if (!apiKey) {
-      const answer = isLikelyCurrentQuestion(text) ? currentInformationFallback : localMatch?.entry.answer || offlineFootballFallback
+      const answer = isLikelyCurrentQuestion(text) ? currentInformationFallback : playerMatch ? playerAnswer(playerMatch) : localMatch?.entry.answer || offlineFootballFallback
       setMessages(current => [...current, { id: crypto.randomUUID(), role: "assistant", text: `${noGeminiMessage}\n\n${answer}`, source: "Built-in knowledge" }])
       setIsThinking(false)
       return
@@ -126,7 +130,7 @@ export function FootyChat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiKey,
-          topicHint: localMatch ? `${localMatch.entry.category}: ${localMatch.entry.id}` : undefined,
+          topicHint: playerMatch ? `PLAYER: ${playerMatch.profile.knownAs}` : localMatch ? `${localMatch.entry.category}: ${localMatch.entry.id}` : undefined,
           messages: conversation.map(({ role, text: content }) => ({ role, content })),
         }),
       })
@@ -140,7 +144,7 @@ export function FootyChat() {
       if (!response.ok || !result.message) throw new Error(response.status === 401 ? invalidKeyMessage : result.error || "The coach could not answer right now.")
       setMessages(current => [...current, { id: crypto.randomUUID(), role: "assistant", text: result.message!, source: "Gemini AI" }])
     } catch (error) {
-      const answer = isLikelyCurrentQuestion(text) ? currentInformationFallback : localMatch?.entry.answer || offlineFootballFallback
+      const answer = isLikelyCurrentQuestion(text) ? currentInformationFallback : playerMatch ? playerAnswer(playerMatch) : localMatch?.entry.answer || offlineFootballFallback
       const prefix = error instanceof Error && error.message === invalidKeyMessage ? noGeminiMessage : "Gemini is unavailable, so I’m using FootyCoach’s built-in football knowledge."
       setMessages(current => [...current, { id: crypto.randomUUID(), role: "assistant", text: `${prefix}\n\n${answer}`, source: "Built-in knowledge" }])
     } finally {
