@@ -1,4 +1,5 @@
 import { buttonVariants } from "@/components/ui/button"
+import { GeminiSettings } from "@/components/gemini-settings"
 
 export function SiteHeader() {
   return (
@@ -13,7 +14,10 @@ export function SiteHeader() {
           <a href="#examples" className="hover:text-foreground">Examples</a>
           <a href="#about" className="hover:text-foreground">About</a>
         </nav>
-        <a href="#ask" className={buttonVariants({ className: "rounded-full" })}>Start chatting</a>
+        <div className="flex items-center gap-2">
+          <GeminiSettings />
+          <a href="#ask" className={buttonVariants({ className: "rounded-full" })}>Start chatting</a>
+        </div>
       </div>
     </header>
   )
