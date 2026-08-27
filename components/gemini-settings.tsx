@@ -1,23 +1,32 @@
 "use client"
 
+import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
-import { Check, Eye, EyeOff, KeyRound, Settings, X } from "lucide-react"
+import { Check, Eye, EyeOff, KeyRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 const storageKey = "footycoach-gemini-api-key"
 
-export function GeminiSettings() {
-  const [open, setOpen] = useState(false)
+type GeminiSettingsProps = {
+  open: boolean
+  onClose: () => void
+}
+
+export function GeminiSettings({ open, onClose }: GeminiSettingsProps) {
+  if (!open) return null
+
+  return <GeminiSettingsModal onClose={onClose} />
+}
+
+function GeminiSettingsModal({ onClose }: Pick<GeminiSettingsProps, "onClose">) {
   const [apiKey, setApiKey] = useState("")
   const [showKey, setShowKey] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
-
-  function closeModal() {
-    setOpen(false)
-  }
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const storedKey = sessionStorage.getItem(storageKey)
     if (storedKey) {
       setApiKey(storedKey)
@@ -26,15 +35,13 @@ export function GeminiSettings() {
   }, [])
 
   useEffect(() => {
-    if (!open) return
-
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeModal()
+      if (event.key === "Escape") onClose()
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open])
+  }, [onClose])
 
   function saveKey() {
     const trimmedKey = apiKey.trim()
@@ -42,13 +49,14 @@ export function GeminiSettings() {
       sessionStorage.removeItem(storageKey)
       setApiKey("")
       setIsConnected(false)
+      onClose()
       return
     }
 
     sessionStorage.setItem(storageKey, trimmedKey)
     setApiKey(trimmedKey)
     setIsConnected(true)
-    closeModal()
+    onClose()
   }
 
   function removeKey() {
@@ -57,24 +65,14 @@ export function GeminiSettings() {
     setIsConnected(false)
   }
 
-  return (
-    <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => setOpen(true)}
-        aria-label="Open Gemini settings"
-        title="Gemini settings"
-      >
-        <Settings />
-      </Button>
-      {open && (
+  if (!mounted) return null
+
+  return createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-foreground/40 p-4 backdrop-blur-sm sm:p-6"
           role="presentation"
           onPointerDown={event => {
-            if (event.target === event.currentTarget) closeModal()
+            if (event.target === event.currentTarget) onClose()
           }}
         >
           <div
@@ -89,7 +87,7 @@ export function GeminiSettings() {
                 <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">Settings</p>
                 <h2 id="gemini-settings-title" className="mt-2 text-2xl font-bold">Connect Gemini</h2>
               </div>
-              <Button type="button" variant="ghost" size="icon" onClick={closeModal} aria-label="Close Gemini settings" className="shrink-0">
+              <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close Gemini settings" className="shrink-0">
                 <X />
               </Button>
             </div>
@@ -128,8 +126,7 @@ export function GeminiSettings() {
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </>
+        </div>,
+    document.body,
   )
 }
