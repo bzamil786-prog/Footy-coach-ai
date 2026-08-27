@@ -111,7 +111,12 @@ export function FootyChat() {
           messages: conversation.map(({ role, text: content }) => ({ role, content })),
         }),
       })
-      const result: { message?: string; error?: string } = await response.json()
+      const responseBody = await response.text()
+      let result: { message?: string; error?: string } = {}
+      try {
+        result = JSON.parse(responseBody) as typeof result
+      } catch {
+      }
 
       if (!response.ok || !result.message) {
         throw new Error(response.status === 401 ? invalidKeyMessage : result.error || "The coach could not answer right now.")

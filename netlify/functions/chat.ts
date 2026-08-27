@@ -26,9 +26,9 @@ export default async function handler(request: Request) {
       return Response.json({ error: "Please ask a football question." }, { status: 400 })
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: messages.slice(-20).map(message => ({
@@ -38,7 +38,19 @@ export default async function handler(request: Request) {
       }),
     })
 
-    if (response.status === 400 || response.status === 401 || response.status === 403) {
+    const responseBody = await response.text()
+    let result: {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+      error?: { status?: string; message?: string }
+    } = {}
+
+    try {
+      result = JSON.parse(responseBody) as typeof result
+    } catch {
+    }
+
+    const upstreamError = result.error?.message?.toLowerCase() || ""
+    if (response.status === 401 || response.status === 403 || upstreamError.includes("api key")) {
       return Response.json({ error: "Invalid or expired Gemini API key" }, { status: 401 })
     }
 
@@ -46,9 +58,6 @@ export default async function handler(request: Request) {
       return Response.json({ error: "The football coach is unavailable right now." }, { status: 502 })
     }
 
-    const result = (await response.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-    }
     const message = result.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim()
 
     if (!message) {
