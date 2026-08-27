@@ -131,7 +131,7 @@ export function FootyChat() {
         body: JSON.stringify({
           apiKey,
           topicHint: playerMatch ? `PLAYER: ${playerMatch.profile.knownAs}` : localMatch ? `${localMatch.entry.category}: ${localMatch.entry.id}` : undefined,
-          messages: conversation.map(({ role, text: content }) => ({ role, content })),
+          messages: conversation.filter(message => message.role === "user" || message.source === "Gemini AI").map(({ role, text: content, source }) => ({ role, content, source })),
         }),
       })
       const responseBody = await response.text()

@@ -1,9 +1,12 @@
+import { toGeminiContents } from "../../lib/chat-history"
+
 const systemPrompt =
   "You are FootyCoach AI, an expert educational assistant focused on association football/soccer.\n\nYou understand football rules, tactics, formations, positions, players, clubs, leagues, competitions, managers, stadiums, football history, famous matches, terminology, skills, training concepts and general football culture.\n\nExplain answers clearly and naturally.\n\nFor beginners, use simple explanations.\nFor tactical questions, give deeper explanations when useful.\n\nYou may answer normal greetings and conversational messages, but your main expertise is football.\n\nNever invent current scores, current transfers, injuries or breaking news if you are unsure.\n\nIf a question requires information newer than your reliable knowledge, clearly say that the information may have changed.\n\nKeep answers useful and usually concise unless the user asks for detail."
 
 type ChatMessage = {
   role: "user" | "assistant"
   content: string
+  source?: "Built-in knowledge" | "Gemini AI" | "Demo Mode"
 }
 
 export default async function handler(request: Request) {
@@ -26,14 +29,15 @@ export default async function handler(request: Request) {
       return Response.json({ error: "Please ask a football question." }, { status: 400 })
     }
 
+    const contents = toGeminiContents(messages.slice(-20))
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: messages.slice(-20).map((message, index, recentMessages) => ({
-          role: message.role === "assistant" ? "model" : "user",
-          parts: [{ text: body.topicHint && index === recentMessages.length - 1 && message.role === "user" ? `Detected topic: ${body.topicHint}\n\nUser question: ${message.content}` : message.content }],
+        contents: contents.map((message, index) => ({
+          ...message,
+          parts: [{ text: body.topicHint && index === contents.length - 1 ? `Detected topic: ${body.topicHint}\n\n${message.parts[0].text}` : message.parts[0].text }],
         })),
       }),
     })
