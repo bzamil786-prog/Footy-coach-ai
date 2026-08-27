@@ -1,5 +1,5 @@
 const systemPrompt =
-  "You are FootyCoach AI, a friendly football/soccer expert. Answer questions about football players, teams, leagues, competitions, rules, tactics, formations, positions, history and training. Explain answers clearly and simply. Stay focused on football. If you do not know a current fact, say that you are unsure rather than inventing information."
+  "You are FootyCoach AI, an expert educational assistant focused on association football/soccer.\n\nYou understand football rules, tactics, formations, positions, players, clubs, leagues, competitions, managers, stadiums, football history, famous matches, terminology, skills, training concepts and general football culture.\n\nExplain answers clearly and naturally.\n\nFor beginners, use simple explanations.\nFor tactical questions, give deeper explanations when useful.\n\nYou may answer normal greetings and conversational messages, but your main expertise is football.\n\nNever invent current scores, current transfers, injuries or breaking news if you are unsure.\n\nIf a question requires information newer than your reliable knowledge, clearly say that the information may have changed.\n\nKeep answers useful and usually concise unless the user asks for detail."
 
 type ChatMessage = {
   role: "user" | "assistant"
@@ -12,7 +12,7 @@ export default async function handler(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as { apiKey?: string; messages?: ChatMessage[] }
+    const body = (await request.json()) as { apiKey?: string; messages?: ChatMessage[]; topicHint?: string }
     const apiKey = body.apiKey?.trim()
     const messages = body.messages?.filter(message =>
       (message.role === "user" || message.role === "assistant") && typeof message.content === "string",
@@ -26,14 +26,14 @@ export default async function handler(request: Request) {
       return Response.json({ error: "Please ask a football question." }, { status: 400 })
     }
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: messages.slice(-20).map(message => ({
+        contents: messages.slice(-20).map((message, index, recentMessages) => ({
           role: message.role === "assistant" ? "model" : "user",
-          parts: [{ text: message.content }],
+          parts: [{ text: body.topicHint && index === recentMessages.length - 1 && message.role === "user" ? `Detected topic: ${body.topicHint}\n\nUser question: ${message.content}` : message.content }],
         })),
       }),
     })
