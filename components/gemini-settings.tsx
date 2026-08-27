@@ -71,7 +71,7 @@ export function GeminiSettings() {
       </Button>
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-foreground/40 px-5 py-8 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-foreground/40 p-4 backdrop-blur-sm sm:p-6"
           role="presentation"
           onPointerDown={event => {
             if (event.target === event.currentTarget) closeModal()
@@ -81,7 +81,7 @@ export function GeminiSettings() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="gemini-settings-title"
-            className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-background text-foreground shadow-2xl"
+            className="relative max-h-[85dvh] w-[min(92vw,560px)] overflow-y-auto rounded-3xl bg-background text-foreground shadow-2xl"
             onPointerDown={event => event.stopPropagation()}
           >
             <div className="sticky top-0 z-10 flex items-start justify-between gap-4 bg-background p-6 sm:p-8">
