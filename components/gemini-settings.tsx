@@ -8,10 +8,14 @@ import { Input } from "@/components/ui/input"
 const storageKey = "footycoach-gemini-api-key"
 
 export function GeminiSettings() {
-  const [isOpen, setIsOpen] = useState(false)
+  const [open, setOpen] = useState(false)
   const [apiKey, setApiKey] = useState("")
   const [showKey, setShowKey] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
+
+  function closeModal() {
+    setOpen(false)
+  }
 
   useEffect(() => {
     const storedKey = sessionStorage.getItem(storageKey)
@@ -20,6 +24,17 @@ export function GeminiSettings() {
       setIsConnected(true)
     }
   }, [])
+
+  useEffect(() => {
+    if (!open) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeModal()
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [open])
 
   function saveKey() {
     const trimmedKey = apiKey.trim()
@@ -33,6 +48,7 @@ export function GeminiSettings() {
     sessionStorage.setItem(storageKey, trimmedKey)
     setApiKey(trimmedKey)
     setIsConnected(true)
+    closeModal()
   }
 
   function removeKey() {
@@ -47,36 +63,37 @@ export function GeminiSettings() {
         type="button"
         variant="ghost"
         size="icon"
-        onClick={() => setIsOpen(true)}
+        onClick={() => setOpen(true)}
         aria-label="Open Gemini settings"
         title="Gemini settings"
       >
         <Settings />
       </Button>
-      {isOpen && (
+      {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 px-5 py-8 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-foreground/40 px-5 py-8 backdrop-blur-sm"
           role="presentation"
-          onMouseDown={event => {
-            if (event.target === event.currentTarget) setIsOpen(false)
+          onPointerDown={event => {
+            if (event.target === event.currentTarget) closeModal()
           }}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="gemini-settings-title"
-            className="w-full max-w-md rounded-3xl bg-background p-6 text-foreground shadow-2xl sm:p-8"
+            className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-background text-foreground shadow-2xl"
+            onPointerDown={event => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 bg-background p-6 sm:p-8">
               <div>
                 <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">Settings</p>
                 <h2 id="gemini-settings-title" className="mt-2 text-2xl font-bold">Connect Gemini</h2>
               </div>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setIsOpen(false)} aria-label="Close Gemini settings">
+              <Button type="button" variant="ghost" size="icon" onClick={closeModal} aria-label="Close Gemini settings" className="shrink-0">
                 <X />
               </Button>
             </div>
-            <div className="mt-6 flex flex-col gap-4">
+            <div className="flex flex-col gap-4 px-6 pb-6 sm:px-8 sm:pb-8">
               <label htmlFor="gemini-api-key" className="text-sm font-semibold">Gemini API Key</label>
               <div className="relative">
                 <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
